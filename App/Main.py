@@ -2,7 +2,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from App.Api.Limiter import limiter
 from App.Api.V1.Router import router as v1_router
 from App.Config.Settings import get_settings
 from App.Db.ConnectionPool import ConnectionPool
@@ -25,6 +29,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Books API", lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(v1_router)
 

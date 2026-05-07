@@ -1,6 +1,7 @@
 import asyncpg
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
+from App.Api.Limiter import limiter
 from App.Api.V1.Dependencies.GetDbConnection import DbConnection
 from App.Config.Settings import get_settings
 from App.Repositories.UsersRepository import UsersRepository
@@ -26,10 +27,14 @@ def _build_service(connection: asyncpg.Connection) -> AuthService:
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserCreate, connection: DbConnection) -> TokenResponse:
+@limiter.limit("5/minute")
+async def register(
+    request: Request, payload: UserCreate, connection: DbConnection
+) -> TokenResponse:
     return await _build_service(connection).register(payload)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, connection: DbConnection) -> TokenResponse:
+@limiter.limit("5/minute")
+async def login(request: Request, payload: LoginRequest, connection: DbConnection) -> TokenResponse:
     return await _build_service(connection).login(payload.email, payload.password)
