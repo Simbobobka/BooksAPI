@@ -66,41 +66,47 @@ class BooksImporter:
 
         rows: list[tuple[int, BookCreate]] = []
         errors: list[ImportRowError] = []
+
         reader = csv.DictReader(io.StringIO(text))
-        for i, raw in enumerate(reader, start=1):
+        current_key: tuple | None = None
+        current_start_row = 0
+        current_book: dict | None = None
+        current_authors: list[dict] = []
+
+        def flush() -> None:
+            if current_book is None:
+                return
             try:
-                rows.append((i, BooksImporter._csv_row_to_book(raw)))
-            except (ValidationError, ValueError) as e:
-                msg = e.errors()[0]["msg"] if isinstance(e, ValidationError) else str(e)
-                errors.append(ImportRowError(row=i, detail=msg))
+                rows.append((current_start_row, BookCreate.model_validate(current_book)))
+            except ValidationError as e:
+                errors.append(ImportRowError(row=current_start_row, detail=e.errors()[0]["msg"]))
 
-        return rows, errors
+        def col(raw: dict, name: str) -> str:
+            return (raw.get(name) or "").strip()
 
-    @staticmethod
-    def _csv_row_to_book(raw: dict[str, str]) -> BookCreate:
-        authors_raw = (raw.get("authors") or "").strip()
-        authors: list[dict] = []
-        for entry in authors_raw.split(";"):
-            entry = entry.strip()
-            if not entry:
-                continue
-            parts = [p.strip() or None for p in entry.split("|")]
-            while len(parts) < 4:
-                parts.append(None)
-            authors.append(
-                {
-                    "name": parts[0],
-                    "last_name": parts[1],
-                    "middle_name": parts[2],
-                    "pen_name": parts[3],
-                }
-            )
-
-        return BookCreate.model_validate(
-            {
-                "title": (raw.get("title") or "").strip(),
-                "published_year": (raw.get("published_year") or "").strip(),
-                "genre_id": (raw.get("genre_id") or "").strip(),
-                "authors": authors,
+        for i, raw in enumerate(reader, start=1):
+            key = (col(raw, "title"), col(raw, "published_year"), col(raw, "genre_id"))
+            author = {
+                "name": col(raw, "author_name") or None,
+                "last_name": col(raw, "author_last_name") or None,
+                "middle_name": col(raw, "author_middle_name") or None,
+                "pen_name": col(raw, "author_pen_name") or None,
             }
-        )
+
+            if key == current_key:
+                current_authors.append(author)
+                current_book["authors"] = current_authors  # type: ignore[index]
+            else:
+                flush()
+                current_key = key
+                current_start_row = i
+                current_authors = [author]
+                current_book = {
+                    "title": key[0],
+                    "published_year": key[1],
+                    "genre_id": key[2],
+                    "authors": current_authors,
+                }
+
+        flush()
+        return rows, errors

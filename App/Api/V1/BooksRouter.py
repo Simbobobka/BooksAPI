@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, UploadFile, status
+from fastapi import APIRouter, Query, Response, UploadFile, status
 
 from App.Api.V1.Dependencies.GetCurrentUser import CurrentUser
 from App.Api.V1.Dependencies.GetDbConnection import DbConnection
@@ -9,6 +9,7 @@ from App.Schemas.Book.BookListResponse import BookListResponse
 from App.Schemas.Book.BookResponse import BookResponse
 from App.Schemas.Book.BookUpdate import BookUpdate
 from App.Schemas.Book.ImportResponse import ImportResponse
+from App.Services.Books.BooksExporter import BooksExporter
 from App.Services.Books.BooksImporter import BooksImporter
 from App.Services.Books.BooksService import BooksService
 
@@ -33,6 +34,30 @@ async def list_books(
 ) -> BookListResponse:
     return await BooksService(connection).list(
         title, genre_id, author, year_from, year_to, sort_by, order, limit, offset
+    )
+
+
+@router.get("/export")
+async def export_books(
+    connection: DbConnection,
+    title: Annotated[str | None, Query()] = None,
+    genre_id: Annotated[int | None, Query()] = None,
+    author: Annotated[str | None, Query()] = None,
+    year_from: Annotated[int | None, Query(ge=1800)] = None,
+    year_to: Annotated[int | None, Query(le=9999)] = None,
+    format: Annotated[Literal["json", "csv"], Query()] = "json",
+) -> Response:
+    books = await BooksService(connection).export(title, genre_id, author, year_from, year_to)
+    if format == "csv":
+        return Response(
+            content=BooksExporter.to_csv(books),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=books.csv"},
+        )
+    return Response(
+        content=BooksExporter.to_json(books),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=books.json"},
     )
 
 

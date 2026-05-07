@@ -49,6 +49,43 @@ class BooksRepository:
     async def get_by_id(self, book_id: int) -> Record | None:
         return await self._connection.fetchrow(self._SELECT_BY_ID, book_id)
 
+    @staticmethod
+    def _build_where(
+        title: str | None,
+        genre_id: int | None,
+        author: str | None,
+        year_from: int | None,
+        year_to: int | None,
+    ) -> tuple[str, list]:
+        conditions: list[str] = []
+        params: list = []
+
+        def p(val) -> str:
+            params.append(val)
+            return f"${len(params)}"
+
+        if title is not None:
+            ref = p(f"%{title}%")
+            conditions.append(f"lower(b.title) LIKE lower({ref})")
+        if genre_id is not None:
+            conditions.append(f"b.genre_id = {p(genre_id)}")
+        if year_from is not None:
+            conditions.append(f"b.published_year >= {p(year_from)}")
+        if year_to is not None:
+            conditions.append(f"b.published_year <= {p(year_to)}")
+        if author is not None:
+            ref = p(f"%{author}%")
+            conditions.append(f"""EXISTS (
+                SELECT 1 FROM book_authors ba2
+                JOIN authors a2 ON a2.id = ba2.author_id
+                WHERE ba2.book_id = b.id
+                AND (lower(a2.name) LIKE lower({ref})
+                     OR lower(COALESCE(a2.pen_name, '')) LIKE lower({ref}))
+            )""")
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        return where, params
+
     async def list(
         self,
         title: str | None,
@@ -61,49 +98,17 @@ class BooksRepository:
         limit: int,
         offset: int,
     ) -> tuple[list[Record], int]:
-        conditions: list[str] = []
-        params: list = []
-
-        def p(val) -> str:
-            params.append(val)
-            return f"${len(params)}"
-
-        if title is not None:
-            ref = p(f"%{title}%")
-            conditions.append(f"lower(b.title) LIKE lower({ref})")
-
-        if genre_id is not None:
-            ref = p(genre_id)
-            conditions.append(f"b.genre_id = {ref}")
-
-        if year_from is not None:
-            ref = p(year_from)
-            conditions.append(f"b.published_year >= {ref}")
-
-        if year_to is not None:
-            ref = p(year_to)
-            conditions.append(f"b.published_year <= {ref}")
-
-        if author is not None:
-            ref = p(f"%{author}%")
-            conditions.append(f"""EXISTS (
-                SELECT 1 FROM book_authors ba2
-                JOIN authors a2 ON a2.id = ba2.author_id
-                WHERE ba2.book_id = b.id
-                AND (lower(a2.name) LIKE lower({ref})
-                     OR lower(COALESCE(a2.pen_name, '')) LIKE lower({ref}))
-            )""")
-
-        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        where, params = self._build_where(title, genre_id, author, year_from, year_to)
         sort_expr = _SORT_MAP.get(sort_by, "b.created_at")
         order_dir = "ASC" if order == "asc" else "DESC"
-
         base = f"FROM books b JOIN genres g ON g.id = b.genre_id {where}"
 
         total: int = await self._connection.fetchval(f"SELECT COUNT(*) {base}", *params)
 
-        limit_ref = p(limit)
-        offset_ref = p(offset)
+        params.append(limit)
+        limit_ref = f"${len(params)}"
+        params.append(offset)
+        offset_ref = f"${len(params)}"
 
         rows = await self._connection.fetch(
             f"""SELECT b.id, b.title, b.published_year, b.created_at, b.updated_at,
@@ -114,6 +119,25 @@ class BooksRepository:
             *params,
         )
         return list(rows), total
+
+    async def export(
+        self,
+        title: str | None,
+        genre_id: int | None,
+        author: str | None,
+        year_from: int | None,
+        year_to: int | None,
+    ) -> list[Record]:
+        where, params = self._build_where(title, genre_id, author, year_from, year_to)
+        base = f"FROM books b JOIN genres g ON g.id = b.genre_id {where}"
+        rows = await self._connection.fetch(
+            f"""SELECT b.id, b.title, b.published_year, b.created_at, b.updated_at,
+                       g.id AS genre_id, g.name AS genre_name
+                {base}
+                ORDER BY b.created_at""",
+            *params,
+        )
+        return list(rows)
 
     async def update(
         self,
