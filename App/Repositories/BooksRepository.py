@@ -52,7 +52,7 @@ class BooksRepository:
     async def list(
         self,
         title: str | None,
-        genre: str | None,
+        genre_id: int | None,
         author: str | None,
         year_from: int | None,
         year_to: int | None,
@@ -72,9 +72,9 @@ class BooksRepository:
             ref = p(f"%{title}%")
             conditions.append(f"lower(b.title) LIKE lower({ref})")
 
-        if genre is not None:
-            ref = p(genre)
-            conditions.append(f"lower(g.name) = lower({ref})")
+        if genre_id is not None:
+            ref = p(genre_id)
+            conditions.append(f"b.genre_id = {ref}")
 
         if year_from is not None:
             ref = p(year_from)

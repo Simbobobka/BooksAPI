@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 class BookBase(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     published_year: int = Field(ge=1800)
-    genre_name: str = Field(min_length=1)
+    genre_id: int
 
     @field_validator("published_year")
     @classmethod

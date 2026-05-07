@@ -8,7 +8,7 @@ from App.Schemas.Author.AuthorBase import AuthorBase
 class BookUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     published_year: int | None = Field(default=None, ge=1800)
-    genre_name: str | None = None
+    genre_id: int | None = None
     authors: list[AuthorBase] | None = Field(default=None, min_length=1)
 
     @field_validator("published_year")

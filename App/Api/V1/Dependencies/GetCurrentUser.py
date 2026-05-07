@@ -59,3 +59,6 @@ async def get_current_user(
         email=record["email"],
         created_at=record["created_at"],
     )
+
+
+CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
