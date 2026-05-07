@@ -97,3 +97,12 @@ async def update_book(
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_book(book_id: int, connection: DbConnection, _: CurrentUser) -> None:
     await BooksService(connection).delete(book_id)
+
+
+@router.get("/{book_id}/recommendations", response_model=list[BookResponse])
+async def recommend_books(
+    book_id: int,
+    connection: DbConnection,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> list[BookResponse]:
+    return await BooksService(connection).recommend(book_id, limit)

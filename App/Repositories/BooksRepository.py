@@ -40,6 +40,29 @@ class BooksRepository:
 
     _SET_AUTHORS_INSERT = "INSERT INTO book_authors (book_id, author_id) VALUES ($1, $2)"
 
+    _RECOMMENDATIONS = """
+        WITH scored AS (
+            SELECT b.id,
+                   (b.genre_id = (SELECT genre_id FROM books WHERE id = $1))::int
+                   + (
+                       SELECT COUNT(*)::int
+                       FROM book_authors ba1
+                       JOIN book_authors ba2 ON ba1.author_id = ba2.author_id
+                       WHERE ba1.book_id = $1 AND ba2.book_id = b.id
+                   ) AS score
+            FROM books b
+            WHERE b.id != $1
+        )
+        SELECT b.id, b.title, b.published_year, b.created_at, b.updated_at,
+               g.id AS genre_id, g.name AS genre_name
+        FROM scored s
+        JOIN books b ON b.id = s.id
+        JOIN genres g ON g.id = b.genre_id
+        WHERE s.score > 0
+        ORDER BY s.score DESC, b.created_at DESC
+        LIMIT $2
+    """
+
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
 
@@ -189,3 +212,6 @@ class BooksRepository:
                 self._SET_AUTHORS_INSERT,
                 [(book_id, aid) for aid in author_ids],
             )
+
+    async def get_recommendations(self, book_id: int, limit: int) -> list[Record]:
+        return await self._connection.fetch(self._RECOMMENDATIONS, book_id, limit)

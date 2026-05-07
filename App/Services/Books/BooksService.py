@@ -133,6 +133,19 @@ class BooksService:
             authors_map[ar["book_id"]].append(ar)
         return [self._build_response(br, authors_map[br["id"]]) for br in book_records]
 
+    async def recommend(self, book_id: int, limit: int) -> list[BookResponse]:
+        if await self._books.get_by_id(book_id) is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+        book_records = await self._books.get_recommendations(book_id, limit)
+        if not book_records:
+            return []
+        book_ids = [r["id"] for r in book_records]
+        all_authors = await self._authors.get_by_book_ids(book_ids)
+        authors_map: dict[int, list[Record]] = {bid: [] for bid in book_ids}
+        for ar in all_authors:
+            authors_map[ar["book_id"]].append(ar)
+        return [self._build_response(br, authors_map[br["id"]]) for br in book_records]
+
     async def delete(self, book_id: int) -> None:
         if not await self._books.delete(book_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
