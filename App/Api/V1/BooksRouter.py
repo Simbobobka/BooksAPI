@@ -1,14 +1,17 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Response, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile, status
 
 from App.Api.V1.Dependencies.GetCurrentUser import CurrentUser
 from App.Api.V1.Dependencies.GetDbConnection import DbConnection
+from App.Config.Settings import get_settings
 from App.Schemas.Book.BookCreate import BookCreate
 from App.Schemas.Book.BookListResponse import BookListResponse
 from App.Schemas.Book.BookResponse import BookResponse
 from App.Schemas.Book.BookUpdate import BookUpdate
 from App.Schemas.Book.ImportResponse import ImportResponse
+from App.Schemas.Book.WhatIfResponse import WhatIfResponse
+from App.Services.Books.AiService import AiService
 from App.Services.Books.BooksExporter import BooksExporter
 from App.Services.Books.BooksImporter import BooksImporter
 from App.Services.Books.BooksService import BooksService
@@ -106,3 +109,16 @@ async def recommend_books(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> list[BookResponse]:
     return await BooksService(connection).recommend(book_id, limit)
+
+
+@router.get("/{book_id}/what-if", response_model=WhatIfResponse)
+async def what_if(book_id: int, connection: DbConnection, _: CurrentUser) -> WhatIfResponse:
+    settings = get_settings()
+    if not settings.openai_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is not configured",
+        )
+    book = await BooksService(connection).get_by_id(book_id)
+    scenario = await AiService(settings.openai_api_key).what_if(book)
+    return WhatIfResponse(scenario=scenario)
