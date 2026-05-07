@@ -4,8 +4,10 @@ from fastapi import APIRouter, Request, status
 from App.Api.Limiter import limiter
 from App.Api.V1.Dependencies.GetDbConnection import DbConnection
 from App.Config.Settings import get_settings
+from App.Repositories.RefreshTokensRepository import RefreshTokensRepository
 from App.Repositories.UsersRepository import UsersRepository
 from App.Schemas.Auth.LoginRequest import LoginRequest
+from App.Schemas.Auth.RefreshRequest import RefreshRequest
 from App.Schemas.Auth.TokenResponse import TokenResponse
 from App.Schemas.User.UserCreate import UserCreate
 from App.Services.Auth.AuthService import AuthService
@@ -18,11 +20,13 @@ def _build_service(connection: asyncpg.Connection) -> AuthService:
     settings = get_settings()
     return AuthService(
         users_repository=UsersRepository(connection),
+        refresh_tokens_repository=RefreshTokensRepository(connection),
         jwt_service=JwtService(
             settings.jwt_secret,
             settings.jwt_algorithm,
             settings.access_token_expire_minutes,
         ),
+        refresh_token_expire_days=settings.refresh_token_expire_days,
     )
 
 
@@ -38,3 +42,16 @@ async def register(
 @limiter.limit("5/minute")
 async def login(request: Request, payload: LoginRequest, connection: DbConnection) -> TokenResponse:
     return await _build_service(connection).login(payload.email, payload.password)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def refresh(
+    request: Request, payload: RefreshRequest, connection: DbConnection
+) -> TokenResponse:
+    return await _build_service(connection).refresh(payload.refresh_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(payload: RefreshRequest, connection: DbConnection) -> None:
+    await _build_service(connection).logout(payload.refresh_token)
