@@ -1,0 +1,83 @@
+[
+  {
+    "title": "The Hobbit",
+    "published_year": 1937,
+    "genre_id": 6,
+    "authors": [
+      { "name": "John", "last_name": "Tolkien", "middle_name": "Ronald Reuel", "pen_name": "J.R.R. Tolkien" }
+    ]
+  },
+  {
+    "title": "1984",
+    "published_year": 1949,
+    "genre_id": 1,
+    "authors": [
+      { "name": "Eric", "last_name": "Blair", "pen_name": "George Orwell" }
+    ]
+  },
+  {
+    "title": "Dune",
+    "published_year": 1965,
+    "genre_id": 6,
+    "authors": [
+      { "name": "Frank", "last_name": "Herbert" }
+    ]
+  },
+  {
+    "title": "The Name of the Wind",
+    "published_year": 2007,
+    "genre_id": 6,
+    "authors": [
+      { "name": "Patrick", "last_name": "Rothfuss" }
+    ]
+  },
+  {
+    "title": "Good Omens",
+    "published_year": 1990,
+    "genre_id": 1,
+    "authors": [
+      { "name": "Terry", "last_name": "Pratchett" },
+      { "name": "Neil", "last_name": "Gaiman" }
+    ]
+  },
+  {
+    "title": "Sherlock Holmes: A Study in Scarlet",
+    "published_year": 1887,
+    "genre_id": 7,
+    "authors": [
+      { "name": "Arthur", "last_name": "Doyle", "middle_name": "Conan", "pen_name": "A. Conan Doyle" }
+    ]
+  },
+  {
+    "title": "A Brief History of Time",
+    "published_year": 1988,
+    "genre_id": 3,
+    "authors": [
+      { "name": "Stephen", "last_name": "Hawking" }
+    ]
+  },
+  {
+    "title": "Sapiens",
+    "published_year": 2011,
+    "genre_id": 4,
+    "authors": [
+      { "name": "Yuval", "last_name": "Harari", "middle_name": "Noah" }
+    ]
+  },
+  {
+    "title": "Steve Jobs",
+    "published_year": 2011,
+    "genre_id": 5,
+    "authors": [
+      { "name": "Walter", "last_name": "Isaacson" }
+    ]
+  },
+  {
+    "title": "The Girl with the Dragon Tattoo",
+    "published_year": 2005,
+    "genre_id": 10,
+    "authors": [
+      { "name": "Stieg", "last_name": "Larsson" }
+    ]
+  }
+]
