@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, UploadFile, status
 
 from App.Api.V1.Dependencies.GetCurrentUser import CurrentUser
 from App.Api.V1.Dependencies.GetDbConnection import DbConnection
@@ -8,6 +8,8 @@ from App.Schemas.Book.BookCreate import BookCreate
 from App.Schemas.Book.BookListResponse import BookListResponse
 from App.Schemas.Book.BookResponse import BookResponse
 from App.Schemas.Book.BookUpdate import BookUpdate
+from App.Schemas.Book.ImportResponse import ImportResponse
+from App.Services.Books.BooksImporter import BooksImporter
 from App.Services.Books.BooksService import BooksService
 
 router = APIRouter(prefix="/books", tags=["books"])
@@ -32,6 +34,15 @@ async def list_books(
     return await BooksService(connection).list(
         title, genre_id, author, year_from, year_to, sort_by, order, limit, offset
     )
+
+
+@router.post("/import", response_model=ImportResponse)
+async def import_books(
+    file: UploadFile,
+    connection: DbConnection,
+    _: CurrentUser,
+) -> ImportResponse:
+    return await BooksImporter(connection).run(file)
 
 
 @router.get("/{book_id}", response_model=BookResponse)

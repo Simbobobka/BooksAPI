@@ -27,7 +27,13 @@ class BooksService:
             published_year=book["published_year"],
             genre=GenreResponse(id=book["genre_id"], name=book["genre_name"]),
             authors=[
-                AuthorResponse(id=r["id"], name=r["name"], pen_name=r["pen_name"])
+                AuthorResponse(
+                    id=r["id"],
+                    name=r["name"],
+                    last_name=r["last_name"],
+                    middle_name=r["middle_name"],
+                    pen_name=r["pen_name"],
+                )
                 for r in author_records
             ],
             created_at=book["created_at"],
@@ -44,7 +50,9 @@ class BooksService:
     async def _upsert_authors(self, authors: list[AuthorBase]) -> list[int]:
         ids: list[int] = []
         for a in authors:
-            record = await self._authors.get_or_create(a.name, a.pen_name)
+            record = await self._authors.get_or_create(
+                a.name, a.last_name, a.middle_name, a.pen_name
+            )
             ids.append(record["id"])
         return ids
 
